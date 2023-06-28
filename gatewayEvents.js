@@ -1,18 +1,24 @@
-function GatewayEvent(opcode, data, eventID, eventName) {
-    this.op = opcode
-    
-    if (data != undefined) {
-        this.d = data
-    } else {
-        this.d = {}
+class GatewayEvent {
+    constructor(opcode, data = undefined, eventID = null, eventName = null) {
+        this.op = opcode
+
+        if (data != undefined) {
+            this.d = data
+        } else {
+            this.d = {}
+        }
+
+        if (opcode != 0) {
+            this.s = null
+            this.t = null
+        } else {
+            this.s = eventID
+            this.t = eventName
+        }
     }
 
-    if (opcode != 0) {
-        this.s = null
-        this.t = null
-    } else {
-        this.s = eventID
-        this.t = eventName
+    toJson() {
+        return JSON.stringify(this)
     }
 }
 
@@ -30,4 +36,4 @@ const Opcodes = {
     ACK: 11
 }
 
-module.exports = { GatewayEvent, Opcodes }
+module.exports = { GatewayEvent, Opcodes, TimedEvent }
