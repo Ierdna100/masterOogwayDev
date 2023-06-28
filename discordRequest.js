@@ -18,16 +18,16 @@ async function DiscordRequest(endpoint, options)
         request.body = JSON.stringify(options.body)
     }
 
-    fetch(`${DISCORD_URL}${endpoint}`, request)
+    await fetch(`${DISCORD_URL}${endpoint}`, request)
     .then(async res => {
         console.log(`${res.status} - ${res.statusText}`)
-        let res2 = await res.text()
-        return JSON.parse(res2)
+        resAsJson = res.json()
     })
     .catch(err => {
         console.log(err)
-        return
     })
+
+    return resAsJson
 }
 
 module.exports = { DiscordRequest }

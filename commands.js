@@ -289,13 +289,16 @@ async function CreateCommand(commandIndex) {
 
 async function GetCommands() {
     let res = await DiscordRequest(`${process.env.APP_ID}/commands`, { method: "GET" })
+
+    console.log(res)
     res = JSON.stringify(res, null, "\t")
 
     let debugPathExists = fs.existsSync("./debugs/")
-    //console.log(debugPathExists)
+    
     if (!debugPathExists) {
         fs.mkdirSync("./debugs/")
     }
+    console.log(typeof(res))
     fs.writeFileSync("./debugs/currentCommands.json", res, 'utf-8')
     console.log("Acquired commands, they are saved in ./debugs/currentCommands.json")
 }
