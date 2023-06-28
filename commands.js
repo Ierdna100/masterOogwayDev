@@ -1,6 +1,7 @@
 const fetch = require('node-fetch')
-const enums = require('./discordEnums.js')
+const enums = require('./ApplicationCommand.js')
 const fs = require('fs')
+const process = require('process')
 require('dotenv').config()
 
 const COMMANDS = []
@@ -233,10 +234,55 @@ COMMANDS.push({ //15
     "description": "Sends useful information about the servers running"
 })
 
-//CreateCommand(8)
-GetCommands()
+const main = async () => {
+    if (process.argv[2] == "get") 
+    {
+        console.log("Acquiring commands from the Discord API, standby.")
+        await GetCommands()
+    } 
+    else if (process.argv[2] == "create") 
+    {
+        if (process.argv[3] == undefined)
+        {
+            console.log("Argument unrecognized or not present, please pass either <create> <name> or <get>.")
+            return
+        }
 
-function CreateCommand(commandIndex) {
+        let matchingCommandIndex = -1
+        let proceed = false
+
+        COMMANDS.forEach((element, index) => {
+            let foundMatch = element.name === process.argv[3]
+
+            if (foundMatch && matchingCommandIndex == -1)
+            {
+                matchingCommandIndex = index
+                proceed = true
+            }
+            else if (foundMatch && matchingCommandIndex != -1)
+            {
+                console.log("Found two or more matching instances of a command. What the fuck.")
+                proceed = false
+            }
+        })
+
+        if (proceed)
+        {
+            console.log(`Found command ${process.argv[3]}, attempting to update it with the Discord API.`)
+            await CreateCommand(matchingCommandIndex)
+        }
+        else 
+        {
+            console.log(`Found no command with the name ${process.argv[3]}.`)
+        }
+    }
+    else 
+    {
+        console.error(`Argument unrecognized or not present, please pass either <create> <name> or <get>.`)
+    }
+}
+
+async function CreateCommand(commandIndex) {
     fetch(`https://discord.com/api/v10/applications/${process.env.APP_ID}/commands`, {
         method: "POST",
         headers: {
@@ -247,7 +293,7 @@ function CreateCommand(commandIndex) {
     })
         .then(async res => {
             console.log(`${res.status} - ${res.statusText}`)
-            if (res.status == 429) {
+            if (res.status == 429) { //429 is too many requests (I've abused the API)
                 res = await res.text()
                 res = JSON.parse(res)
                 console.log(res)
@@ -269,15 +315,28 @@ async function GetCommands() {
         }
     })
     .then(async res => {
+        console.log(`${res.status} - ${res.statusText}`)
         res = await res.text()
         res = JSON.parse(res)
-        console.log(res)
-        console.log(res.length)
+        //console.log(res)
+        //console.log(res.length)
         res = JSON.stringify(res, null, "\t")
+
+        let debugPathExists = fs.existsSync("./debugs/")
+        //console.log(debugPathExists)
+        if (!debugPathExists) {
+            fs.mkdirSync("./debugs/")
+        }
         fs.writeFileSync("./debugs/currentCommands.json", res, 'utf-8')
+        console.log("Acquired commands, they are saved in ./debugs/currentCommands.json")
+    })
+    .catch(err => {
+        console.log(err)
     })
 }
 
 function GenerateChoicesForWhisperCommand() {
     let whitelistFilePath = process.env.WHITELIST_FILE_PATH
 }
+
+main()

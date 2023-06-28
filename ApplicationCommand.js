@@ -18,4 +18,4 @@ const ApplicationSubCommandType = {
     ATTACHEMENT: 11
 }
 
-module.exports = {ApplicationCommandType, ApplicationSubCommandTypem }
+module.exports = {ApplicationCommandType, ApplicationSubCommandType }
