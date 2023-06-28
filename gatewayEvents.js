@@ -36,4 +36,4 @@ const Opcodes = {
     ACK: 11
 }
 
-module.exports = { GatewayEvent, Opcodes, TimedEvent }
+module.exports = { GatewayEvent, Opcodes }

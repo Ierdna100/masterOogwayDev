@@ -1,7 +1,7 @@
 const { DiscordRequest, GetGatewayURL } = require('./discordRequest')
 const { AddVariableToEnvFile } = require('./envManager')
 const WebSocket = require('ws')
-const { GatewayEvent, Opcodes, TimedEvent } = require('./gatewayEvents')
+const { GatewayEvent, Opcodes } = require('./gatewayEvents')
 const { ActivityTypes } = require('./activities')
 const { Status } = require('./status')
 const { Intents } = require('./intentsCalculator')
@@ -17,9 +17,19 @@ async function init() {
 
 init()
 
+/*left to do:
+    - Implement resuming code
+    - Implement DB code
+    - Implement shit with mc
+    - Implement commands
+    - Implements external script to handle everything
+    - Implement Steam RCON code (or maybe the other mc fancy one?)
+*/
+
 let heartAck
 let ready = false
 let heartbeatID
+let reconnects = 3
 
 let fullURL = `${process.env.SOCKET_URL}?v=10&encoding=json`
 
@@ -44,16 +54,6 @@ discordSocket.addEventListener("message", (event) => {
     }
 })
 
-discordSocket.addEventListener("ready", (event) => {
-    msg = JSON.parse(event.data)
-    msg = new GatewayEvent(msg.op, msg.d, msg.s, msg.t)
-    console.log(msg)
-})
-
-discordSocket.addEventListener("error", (err) => {
-    console.log(err)
-})
-
 discordSocket.addEventListener("close", (closed) => {
     console.log("OTHER PARTY CLOSED")
     clearInterval(heartbeatID)
@@ -76,14 +76,21 @@ function heartbeatBeat() {
 }
 
 function acknowledgeHeartbeat() {
-    if (heartAck) {
-        console.log("WERE FINE")
+    if (!heartAck) {
+        clearInterval(heartbeatID)
+        discordSocket.close(4009)
+        attemptReconnect()
     }
     else
     {
-        console.log("WERE NOT FINE")
+        reconnects = 3
     }
     heartAck = false
+}
+
+function attemptReconnect() {
+    reconnects--
+
 }
 
 function startIdent() {
