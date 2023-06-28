@@ -1,7 +1,8 @@
 const fetch = require('node-fetch')
 require('dotenv').config()
+const process = require('process')
 
-const commandID = "1118650239067365446" //KEEP AS STRING due to Integer limit
+const commandID = process.argv[2] //KEEP AS STRING due to Integer limit
 
 fetch(`https://discord.com/api/v10/applications/${process.env.APP_ID}/commands/${commandID}`, {
     method: "DELETE",
