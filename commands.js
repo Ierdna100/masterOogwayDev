@@ -2,6 +2,7 @@ const fetch = require('node-fetch')
 const enums = require('./ApplicationCommand.js')
 const fs = require('fs')
 const process = require('process')
+const { DiscordRequest } = require('./discordRequest.js')
 require('dotenv').config()
 
 const COMMANDS = []
@@ -238,7 +239,7 @@ const main = async () => {
     if (process.argv[2] == "get") 
     {
         console.log("Acquiring commands from the Discord API, standby.")
-        await GetCommands()
+        GetCommands()
     } 
     else if (process.argv[2] == "create") 
     {
@@ -269,7 +270,7 @@ const main = async () => {
         if (proceed)
         {
             console.log(`Found command ${process.argv[3]}, attempting to update it with the Discord API.`)
-            await CreateCommand(matchingCommandIndex)
+            CreateCommand(matchingCommandIndex)
         }
         else 
         {
@@ -281,6 +282,29 @@ const main = async () => {
         console.error(`Argument unrecognized or not present, please pass either <create> <name> or <get>.`)
     }
 }
+
+async function CreateCommand(commandIndex) {
+    await DiscordRequest(`${process.env.APP_ID}/commands`, { method: "POST", body: COMMANDS[commandIndex] })
+}
+
+async function GetCommands() {
+    let res = await DiscordRequest(`${process.env.APP_ID}/commands`, { method: "GET" })
+    res = JSON.stringify(res, null, "\t")
+
+    let debugPathExists = fs.existsSync("./debugs/")
+    //console.log(debugPathExists)
+    if (!debugPathExists) {
+        fs.mkdirSync("./debugs/")
+    }
+    fs.writeFileSync("./debugs/currentCommands.json", res, 'utf-8')
+    console.log("Acquired commands, they are saved in ./debugs/currentCommands.json")
+}
+
+function GenerateChoicesForWhisperCommand() {
+    let whitelistFilePath = process.env.WHITELIST_FILE_PATH
+}
+
+main()
 
 async function CreateCommand(commandIndex) {
     fetch(`https://discord.com/api/v10/applications/${process.env.APP_ID}/commands`, {
@@ -305,38 +329,3 @@ async function CreateCommand(commandIndex) {
             console.log(err)
         })
 }
-
-async function GetCommands() {
-    fetch(`https://discord.com/api/v10/applications/${process.env.APP_ID}/commands`, {
-        method: "GET",
-        headers: {
-            "Authorization": `Bot ${process.env.DISCORD_TOKEN}`,
-            'Accept': 'application/json; charset=UTF-8'
-        }
-    })
-    .then(async res => {
-        console.log(`${res.status} - ${res.statusText}`)
-        res = await res.text()
-        res = JSON.parse(res)
-        //console.log(res)
-        //console.log(res.length)
-        res = JSON.stringify(res, null, "\t")
-
-        let debugPathExists = fs.existsSync("./debugs/")
-        //console.log(debugPathExists)
-        if (!debugPathExists) {
-            fs.mkdirSync("./debugs/")
-        }
-        fs.writeFileSync("./debugs/currentCommands.json", res, 'utf-8')
-        console.log("Acquired commands, they are saved in ./debugs/currentCommands.json")
-    })
-    .catch(err => {
-        console.log(err)
-    })
-}
-
-function GenerateChoicesForWhisperCommand() {
-    let whitelistFilePath = process.env.WHITELIST_FILE_PATH
-}
-
-main()

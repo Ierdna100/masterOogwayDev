@@ -3,18 +3,24 @@ require('dotenv').config()
 
 const DISCORD_URL = "https://discord.com/api/v10/applications/"
 
-async function DiscordRequest(endpoint, method, data)
+async function DiscordRequest(endpoint, options)
 {
-    fetch(`${DISCORD_URL}${endpoint}`, {
-        method: method,
+    request = {
+        method: options.method,
         headers: {
             "Authorization": `Bot ${process.env.DISCORD_TOKEN}`,
+            'Content-Type': 'application/json; charset=UTF-8',
             'Accept': 'application/json; charset=UTF-8'
-        },
-        body: data == undefined ? null : JSON.stringify(data) //we don't want a body for certain operations. I think.
-    })
+        }
+    }
+
+    if (options.body) {
+        request.body = JSON.stringify(options.body)
+    }
+
+    fetch(`${DISCORD_URL}${endpoint}`, request)
     .then(async res => {
-        //console.log(`${res.status} - ${res.statusText}`)
+        console.log(`${res.status} - ${res.statusText}`)
         let res2 = await res.text()
         return JSON.parse(res2)
     })
@@ -24,16 +30,4 @@ async function DiscordRequest(endpoint, method, data)
     })
 }
 
-const HTTPMethods = {
-    GET: "GET",
-    DELETE: "DELETE",
-    POST: "POST",
-    HEAD: "HEAD",
-    PUT: "PUT",
-    CONNECT: "CONNECT",
-    OPTIONS: "OPTIONS",
-    TRACE: "TRACE",
-    PATCH: "PATCH"
-}
-
-module.exports = { DiscordRequest, HTTPMethods }
+module.exports = { DiscordRequest }
