@@ -1,0 +1,17 @@
+{
+  "name": "masteroogwaydev",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "run": "node app.js",
+    "test": "nodemon app.js",
+    "commands": "node commands.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "node-fetch": "^2.6.11"
+  }
+}
