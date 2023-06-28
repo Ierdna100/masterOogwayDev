@@ -1,7 +1,7 @@
 const fetch = require('node-fetch')
 require('dotenv').config()
 
-const DISCORD_URL = "https://discord.com/api/v10/applications/"
+DISCORD_URL = process.env.DISCORD_URL
 
 async function DiscordRequest(endpoint, options)
 {
@@ -17,6 +17,7 @@ async function DiscordRequest(endpoint, options)
     if (options.body) {
         request.body = JSON.stringify(options.body)
     }
+    console.log(`${DISCORD_URL}${endpoint}`)
 
     await fetch(`${DISCORD_URL}${endpoint}`, request)
     .then(async res => {
@@ -30,4 +31,9 @@ async function DiscordRequest(endpoint, options)
     return resAsJson
 }
 
-module.exports = { DiscordRequest }
+async function GetGatewayURL() {
+    let res = await DiscordRequest(`/gateway`, { method: "GET" })
+    return res.url
+}
+
+module.exports = { DiscordRequest, GetGatewayURL }

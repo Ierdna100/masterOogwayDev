@@ -284,11 +284,11 @@ const main = async () => {
 }
 
 async function CreateCommand(commandIndex) {
-    await DiscordRequest(`${process.env.APP_ID}/commands`, { method: "POST", body: COMMANDS[commandIndex] })
+    await DiscordRequest(`/applications/${process.env.APP_ID}/commands`, { method: "POST", body: COMMANDS[commandIndex] })
 }
 
 async function GetCommands() {
-    let res = await DiscordRequest(`${process.env.APP_ID}/commands`, { method: "GET" })
+    let res = await DiscordRequest(`/applications/${process.env.APP_ID}/commands`, { method: "GET" })
 
     console.log(res)
     res = JSON.stringify(res, null, "\t")
