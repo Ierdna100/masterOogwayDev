@@ -5,6 +5,7 @@ const { GatewayEvent, Opcodes } = require('./gatewayEvents')
 const { ActivityTypes } = require('./activities')
 const { Status } = require('./status')
 const { Intents } = require('./intentsCalculator')
+const { Logger } = require('./loggingManager')
 require('dotenv').config()
 
 async function init() {
@@ -16,6 +17,9 @@ async function init() {
 }
 
 init()
+
+//this works very shittily
+let logger = new Logger()
 
 /*left to do:
     - Implement resuming code
@@ -38,7 +42,7 @@ const discordSocket = new WebSocket(fullURL)
 discordSocket.addEventListener("message", (event) => {
     msg = JSON.parse(event.data)
     msg = new GatewayEvent(msg.op, msg.d, msg.s, msg.t)
-    console.log(msg)
+    logger.Log(msg)
 
     if (msg.op == Opcodes.HELLO) {
         heartbeatBeat()
@@ -55,20 +59,20 @@ discordSocket.addEventListener("message", (event) => {
 })
 
 discordSocket.addEventListener("close", (closed) => {
-    console.log("OTHER PARTY CLOSED")
+    logger.Log("OTHER PARTY CLOSED")
     clearInterval(heartbeatID)
 })
 
 function heartbeatStart(delay) {
     let jitter = (Math.random() * 0.5) + 0.5
-    console.log(`jitter:${jitter}, times: ${delay}; ${delay * jitter}`)
+    logger.Log(`jitter:${jitter}, times: ${delay}; ${delay * jitter}`)
     heartbeatID = setInterval(heartbeatBeat, delay * jitter)
 
     startIdent()
 }
 
 function heartbeatBeat() {
-    console.log("heart has beaten")
+    logger.Log("heart has beaten")
     heartbeat = new GatewayEvent(Opcodes.HEARBEAT).toJson()
     discordSocket.send(heartbeat)
 

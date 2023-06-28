@@ -3,3 +3,4 @@
 .env
 TODO.txt
 envFileTemplate.txt
+/logs/
