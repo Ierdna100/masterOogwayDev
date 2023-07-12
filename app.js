@@ -1,7 +1,7 @@
 const { DiscordRequest, GetGatewayURL } = require('./discordRequest')
 const { AddVariableToEnvFile } = require('./envManager')
 const WebSocket = require('ws')
-const { GatewayEvent, Opcodes, CloseCodes, CloseCodesReconnectPossibility } = require('./gatewayEvents')
+const { ReceivedGatewayEvent, SentGatewayEvent, Opcodes, CloseCodes, CloseCodesReconnectPossibility } = require('./gatewayEvents')
 const { ActivityTypes } = require('./activities')
 const { Status } = require('./status')
 const { Intents } = require('./intentsCalculator')
@@ -68,14 +68,12 @@ function main()
     internalServer = express()
 
     discordSocket.addEventListener("message", (event) => {
-        msg = JSON.parse(event.data)
-        msg = new GatewayEvent(msg.op, msg.d, msg.s, msg.t)
-        console.log(msg)
+        msg = new ReceivedGatewayEvent(event)
 
-        if (msg.op == Opcodes.HELLO) 
+        if (msg.opcode == Opcodes.HELLO) 
         {
             heartbeatBeat()
-            heartbeatStart(msg.d.heartbeat_interval)
+            heartbeatStart(msg.data.heartbeat_interval)
             if (socketMode == socketModes.IDENTIFIED) 
             {
                 startIdent()
@@ -87,13 +85,13 @@ function main()
             return
         }
 
-        if (msg.op == Opcodes.ACK) 
+        if (msg.opcode == Opcodes.ACK) 
         {
             heartAck = true
             return
         }
 
-        if (msg.op == Opcodes.INVALID_SESSION) //resume event failed
+        if (msg.opcode == Opcodes.INVALID_SESSION) //resume event failed
         {
             discordSocket.close(CloseCodes.SESSION_TIMED_OUT)
 
@@ -101,7 +99,7 @@ function main()
             socketMode = socketModes.IDENTIFIED
             console.log("OOOPSIE?")
 
-            if (msg.d == false) 
+            if (msg.data == false) 
             {
 
             }
@@ -119,19 +117,19 @@ function main()
         //     console.log("websocket resumed")
         // }
 
-        if (msg.op == Opcodes.RECONNECT) //uh oh?
+        if (msg.opcode == Opcodes.RECONNECT) //uh oh?
         {
 
             return
         }
 
-        if (msg.op == Opcodes.DISPATCH) {
-            process.env.LAST_SEQ = msg.s
+        if (msg.opcode == Opcodes.DISPATCH) {
+            process.env.LAST_SEQ = msg.eventID
             AddVariableToEnvFile("LAST_SEQ", process.env.LAST_SEQ)
 
-            if (msg.t == 'READY') 
+            if (msg.eventName == 'READY') 
             {
-                readyEventData = msg.d
+                readyEventData = msg.data
                 process.env.SESSION_ID = readyEventData.session_id
                 AddVariableToEnvFile("SESSION_ID", process.env.SESSION_ID)
                 AddVariableToEnvFile("RESUME_GATEWAY_URL", readyEventData.resume_gateway_url)
@@ -177,8 +175,7 @@ function heartbeatBeat() {
         seqNum = null
     }
 
-    let heartbeat = new GatewayEvent(Opcodes.HEARTRBEAT, seqNum).toJson()
-    console.log(heartbeat)
+    let heartbeat = new SentGatewayEvent(Opcodes.HEARTRBEAT, seqNum).toJson()
     discordSocket.send(heartbeat)
 
     setTimeout(acknowledgeHeartbeat, 5000) //confirm heartbeat within 5000 ms
@@ -209,8 +206,7 @@ function attemptReconnect() {
 }
 
 function resume() {
-    resumeEvent = new GatewayEvent(Opcodes.RESUME, { token: process.env.DISCORD_TOKEN, session_id: process.env.SESSION_ID, seq: process.env.LAST_SEQ }).toJson()
-    console.log(resumeEvent)
+    resumeEvent = new SentGatewayEvent(Opcodes.RESUME, { token: process.env.DISCORD_TOKEN, session_id: process.env.SESSION_ID, seq: process.env.LAST_SEQ }).toJson()
     discordSocket.send(resumeEvent)
 }
 
@@ -237,7 +233,7 @@ function startIdent() {
         }
     }
 
-    let identEvent = new GatewayEvent(Opcodes.IDENT, data).toJson()
+    let identEvent = new SentGatewayEvent(Opcodes.IDENT, data).toJson()
     discordSocket.send(identEvent)
 }
 

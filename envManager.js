@@ -1,9 +1,21 @@
 const fs = require('fs')
 
 function AddVariableToEnvFile(key, value) {
-    let file = fs.readFileSync("./.env").toString()
 
-    file = file.split("\r\n")
+    let file = fs.readFileSync("./.env").toString()
+    let splitter
+
+    if (process.platform == 'win32') //windows separates newlines differently
+    {
+        splitter = "\r\n"
+    }
+    else
+    {
+        splitter = "\n"
+    }
+
+    file = file.split(splitter)
+  
     file.forEach((element, index) => {
         file[index] = element.split("=")
     });

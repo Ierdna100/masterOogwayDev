@@ -1,26 +1,88 @@
-class GatewayEvent {
-    constructor(opcode, data = undefined, eventID = null, eventName = null) {
-        this.op = opcode
+/** 
+ * @class class representing a GatewayEvent that was received 
+ * @param opcode (op) Opcode of the GatewayEvent
+ * @param data (d) Data of the GatewayEvent
+ * @param eventID (s) EventID of the GatewayEvent
+ * @param eventName (t) EventID of the GatewayEvent
+*/
+class ReceivedGatewayEvent {
+    opcode
+    data
+    eventID
+    eventName
 
-        if (data != undefined) {
-            this.d = data
-        } else {
-            this.d = {}
-        }
-
-        if (opcode != 0) {
-            this.s = null
-            this.t = null
-        } else {
-            this.s = eventID
-            this.t = eventName
-        }
+    /**
+     * 
+     * @param {WebSocket.MessageEvent} data MessageEvent to be parsed
+     */
+    constructor(data) {
+        let msg = JSON.parse(data.data)
+        this.opcode = msg.op
+        this.data = msg.d
+        this.eventID = msg.s
+        this.eventName = msg.t
+        
+        console.log(this)
     }
 
+    /**
+     * 
+     * @returns JSON of the object
+     */
     toJson() {
         return JSON.stringify(this)
     }
 }
+
+/** 
+ * @class class representing a GatewayEvent that will be sent 
+ * @param opcode (op) Opcode of the GatewayEvent
+ * @param data (d) Data of the GatewayEvent
+ * @param eventID (s) EventID of the GatewayEvent
+ * @param eventName (t) EventID of the GatewayEvent
+ * */
+class SentGatewayEvent {
+    opcode
+    data
+    eventID
+    eventName
+    
+    /**
+     * 
+     * @param {Opcodes} opcode 
+     * @param {JSON} data 
+     * @param {Integer} eventID 
+     * @param {String} eventName 
+     */
+    constructor(opcode, data = undefined, eventID = null, eventName = null) {
+        this.opcode = opcode
+
+        if (data != undefined) {
+            this.data = data
+        } else {
+            this.data = {}
+        }
+
+        if (opcode != 0) {
+            this.eventID = null
+            this.eventName = null
+        } else {
+            this.eventID = eventID
+            this.eventName = eventName
+        }
+
+        console.log(this)
+    }
+
+    /**
+     * 
+     * @returns JSON of the object
+     */
+    toJson() {
+        return JSON.stringify(this)
+    }
+}
+
 
 const Opcodes = {
     DISPATCH: 0,
@@ -70,4 +132,4 @@ const CloseCodesReconnectPossibility = {
     DISALOWED_INTENTS: false
 }
 
-module.exports = { GatewayEvent, Opcodes, CloseCodes, CloseCodesReconnectPossibility }
+module.exports = { ReceivedGatewayEvent, SentGatewayEvent, Opcodes, CloseCodes, CloseCodesReconnectPossibility }
