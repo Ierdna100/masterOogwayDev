@@ -61,13 +61,14 @@ let readyEventData
 
 let socketMode
 let discordSocket
-let internalServer
+let expressServer
+let internalExpressServer
 
 function main()
 {
     socketMode = socketModeTemp
     discordSocket = new WebSocket(discordSocketURL)
-    internalServer = express()
+    expressServer = express()
 
     discordSocket.addEventListener("message", (event) => {
         msg = new ReceivedGatewayEvent(event)
@@ -95,8 +96,6 @@ function main()
 
         if (msg.opcode == Opcodes.INVALID_SESSION) //resume event failed
         {
-            console.log("OOOPSIE?")
-
             if (msg.data == false) 
             {
                 discordSocket.close(CloseCodes.DISCONNECT)
@@ -109,7 +108,6 @@ function main()
                 discordSocket.close(CloseCodes.SESSION_TIMED_OUT)
                 attemptReconnect(true)
             }
-            //discordSocket = new WebSocket(`${process.env.SOCKET_URL}?v=10&encoding=json`)
 
             return
         }
@@ -121,7 +119,7 @@ function main()
 
         if (msg.opcode == Opcodes.RECONNECT) //uh oh?
         {
-
+            attemptReconnect(true)
             return
         }
 
@@ -139,23 +137,29 @@ function main()
             }
             else 
             {
-
+                //Handle Dispatch
             }
             return
         }
     })
 
     discordSocket.addEventListener("close", (closed) => {
-        //console.log(JSON.parse(closed))
-        console.log(`OTHER PARTY CLOSED WITH CODE: ${closed.code} - ${closed.reason}`)
+        console.log(`OTHER PARTY CLOSED WITH CODE: ${closed.code} ${closed.reason}`)
         clearInterval(heartbeatID)
+
+        if (closed.code == 1000 || closed.code == 1001) {
+            attemptReconnect(false)
+        }
+        else if (closed.code <= 4009 || closed.code > 4014) { //4010 through 4014 are not codes that allow reconnection
+            attemptReconnect(true)
+        }
     })
 
-    internalServer.get('/', (req, res) => {
+    expressServer.get('/', (req, res) => {
         console.log(JSON.parse(req))
     })
     
-    internalServer.listen(process.env.INTERNAL_SERVER_PORT, () => {
+    internalExpressServer = expressServer.listen(process.env.INTERNAL_SERVER_PORT, () => {
         console.log(`Internal server listening on ${process.env.INTERNAL_SERVER_PORT}`)
     })
 }
@@ -204,6 +208,7 @@ function attemptReconnect(attemptResume) {
     if (reconnects <= 0)
     {
         console.log("Tried to reconnect 3 times and failed. Stopping.")
+        Quit()
         return
     }
     reconnects-- //we only try three times or something is very wrong
@@ -217,12 +222,15 @@ function attemptReconnect(attemptResume) {
         checkIfURLIdentExists()
 
         discordSocketURL = `${process.env.SOCKET_URL}?v=10&encoding=json`
-        socketModeTemp = socketModes.IDENTIFIED
+        socketMode = socketModes.IDENTIFIED
         console.log("Initializing websocket as an IDENTIFIED socket")
+
+        discordSocket = new WebSocket(discordSocketURL)
     }
 }
 
 function resume() {
+    socketMode = socketModes.RESUMED
     resumeEvent = new SentGatewayEvent(Opcodes.RESUME, { token: process.env.DISCORD_TOKEN, session_id: process.env.SESSION_ID, seq: process.env.LAST_SEQ }).toJson()
     discordSocket.send(resumeEvent)
 }
@@ -263,3 +271,14 @@ async function checkIfURLIdentExists()
         AddVariableToEnvFile("SOCKET_URL", newURL) // applies next session after dotenv is reconfigured
     }
 }
+
+function Quit() 
+{
+    internalExpressServer.close()
+
+    if (discordSocket)
+    {
+        discordSocket.close(1000)
+    }
+}
+    
