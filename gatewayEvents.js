@@ -42,33 +42,28 @@ class ReceivedGatewayEvent {
  * @param eventName (t) EventID of the GatewayEvent
  * */
 class SentGatewayEvent {
-    opcode
-    data
-    eventID
-    eventName
-    
     /**
      * 
-     * @param {Opcodes} opcode 
-     * @param {JSON} data 
-     * @param {Integer} eventID 
-     * @param {String} eventName 
+     * @param {Opcodes} opcode (op) Opcode of the GatewayEvent
+     * @param {JSON} data (d) Data of the GatewayEvent
+     * @param {Integer} eventID (s) EventID of the GatewayEvent
+     * @param {String} eventName (t) EventID of the GatewayEvent
      */
     constructor(opcode, data = undefined, eventID = null, eventName = null) {
-        this.opcode = opcode
+        this.op = opcode
 
         if (data != undefined) {
-            this.data = data
+            this.d = data
         } else {
-            this.data = {}
+            this.d = {}
         }
 
-        if (opcode != 0) {
-            this.eventID = null
-            this.eventName = null
+        if (this.op != 0) {
+            this.s = null
+            this.t = null
         } else {
-            this.eventID = eventID
-            this.eventName = eventName
+            this.s = eventID
+            this.t = eventName
         }
 
         console.log(this)
@@ -99,6 +94,7 @@ const Opcodes = {
 }
 
 const CloseCodes = {
+    DISCONNECT: 1000,
     UNKNOWN_ERROR: 4000,
     UNKNOWN_OPCODE: 4001,
     DECODE_ERROR: 4002,

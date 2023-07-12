@@ -42,7 +42,7 @@ function AddVariableToEnvFile(key, value) {
     let writeData = ""
 
     file.forEach(element => {
-        writeData = writeData + `${element[0]}=${element[1]}\r\n`
+        writeData = writeData + `${element[0]}=${element[1]}${splitter}`
     })
 
     writeData = writeData.substring(0, writeData.length - 2) //remvoes the extra \r\n

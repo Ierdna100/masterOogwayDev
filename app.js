@@ -20,7 +20,9 @@ const socketModes = {
 async function init() {
     await checkIfURLIdentExists()
 
-    if (process.env.RESUME_GATEWAY_URL && !(process.argv[2] == "force-ident"))
+    console.log(process.argv)
+
+    if ((process.env.RESUME_GATEWAY_URL && !(process.argv[2] == "force-ident")) || process.argv[2] == "force-resume")
     {
         discordSocketURL = process.env.RESUME_GATEWAY_URL
         socketModeTemp = socketModes.RESUMED
@@ -93,19 +95,19 @@ function main()
 
         if (msg.opcode == Opcodes.INVALID_SESSION) //resume event failed
         {
-            discordSocket.close(CloseCodes.SESSION_TIMED_OUT)
-
-            checkIfURLIdentExists()
-            socketMode = socketModes.IDENTIFIED
             console.log("OOOPSIE?")
 
             if (msg.data == false) 
             {
+                discordSocket.close(CloseCodes.DISCONNECT)
+                console.log("Could not resume")
 
+                attemptReconnect(false)
             }
             else
             {
-                resume()
+                discordSocket.close(CloseCodes.SESSION_TIMED_OUT)
+                attemptReconnect(true)
             }
             //discordSocket = new WebSocket(`${process.env.SOCKET_URL}?v=10&encoding=json`)
 
@@ -144,7 +146,7 @@ function main()
     })
 
     discordSocket.addEventListener("close", (closed) => {
-        console.log(JSON.parse(closed))
+        //console.log(JSON.parse(closed))
         console.log(`OTHER PARTY CLOSED WITH CODE: ${closed.code} - ${closed.reason}`)
         clearInterval(heartbeatID)
     })
@@ -185,7 +187,7 @@ function acknowledgeHeartbeat() {
     if (!heartAck) {
         clearInterval(heartbeatID)
         discordSocket.close(4009)
-        attemptReconnect()
+        attemptReconnect(true)
     }
     else
     {
@@ -194,7 +196,11 @@ function acknowledgeHeartbeat() {
     heartAck = false
 }
 
-function attemptReconnect() {
+/**
+ * 
+ * @param {Boolean} attemptResume If true, the code will attempt to resume instead of creating a new socket.
+ */
+function attemptReconnect(attemptResume) {
     if (reconnects <= 0)
     {
         console.log("Tried to reconnect 3 times and failed. Stopping.")
@@ -202,7 +208,18 @@ function attemptReconnect() {
     }
     reconnects-- //we only try three times or something is very wrong
 
-    resume()
+    if (attemptResume)
+    {
+        resume()
+    }
+    else
+    {
+        checkIfURLIdentExists()
+
+        discordSocketURL = `${process.env.SOCKET_URL}?v=10&encoding=json`
+        socketModeTemp = socketModes.IDENTIFIED
+        console.log("Initializing websocket as an IDENTIFIED socket")
+    }
 }
 
 function resume() {
@@ -218,7 +235,7 @@ function startIdent() {
 //        intents: 55840, //0 1101 1010 0010 0000, WEBHOOKS, MESSAGES, TYPING, DM, DM_TYPING, MESSAGE_CONTENT (activate the sensitive thing)
         intents: new Intents(false, false, false, false, false, true, false, false, false, true, false, true, true, false, true, false, false).toInt(),
         properties: {
-            os: "windows10",
+            os: process.platform,
             browser: "noneofthem",
             device: "3700xcpu"
         },
