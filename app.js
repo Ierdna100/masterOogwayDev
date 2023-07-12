@@ -1,11 +1,10 @@
 const { DiscordRequest, GetGatewayURL } = require('./discordRequest')
 const { AddVariableToEnvFile } = require('./envManager')
 const WebSocket = require('ws')
-const { ReceivedGatewayEvent, SentGatewayEvent, Opcodes, CloseCodes, CloseCodesReconnectPossibility } = require('./gatewayEvents')
+const { ReceivedGatewayEvent, SentGatewayEvent, Opcodes, CloseCodes } = require('./gatewayEvents')
 const { ActivityTypes } = require('./activities')
 const { Status } = require('./status')
 const { Intents } = require('./intentsCalculator')
-//const { Logger } = require('./loggingManager')'
 const express = require('express')
 require('dotenv').config()
 
@@ -19,8 +18,6 @@ const socketModes = {
 
 async function init() {
     await checkIfURLIdentExists()
-
-    console.log(process.argv)
 
     if ((process.env.RESUME_GATEWAY_URL && !(process.argv[2] == "force-ident")) || process.argv[2] == "force-resume")
     {
@@ -39,20 +36,6 @@ async function init() {
 }
 
 init()
-
-//this works very shittily
-//let logger = new Logger()
-
-/*left to do:
-    - Implement resuming code
-    - Implement DB code
-    - Implement shit with mc
-    - Implement commands
-    - Implements external script to handle everything
-    - Implement Steam RCON code (or maybe the other mc fancy one?)
-
-    - RESUME DOESN'T WORK?
-*/
 
 let heartAck
 let heartbeatID
@@ -73,9 +56,9 @@ function main()
     discordSocket.addEventListener("message", (event) => {
         msg = new ReceivedGatewayEvent(event)
 
-        if (msg.opcode == Opcodes.HELLO) 
+        if (msg.opcode == Opcodes.HELLO) //Websocket open, discord sends Hello
         {
-            heartbeatBeat()
+            heartbeatBeat() //my code sucks so I'll just call it once here
             heartbeatStart(msg.data.heartbeat_interval)
             if (socketMode == socketModes.IDENTIFIED) 
             {
@@ -88,7 +71,7 @@ function main()
             return
         }
 
-        if (msg.opcode == Opcodes.ACK) 
+        if (msg.opcode == Opcodes.ACK) //discord acknowledges heartbeat
         {
             heartAck = true
             return
@@ -96,14 +79,14 @@ function main()
 
         if (msg.opcode == Opcodes.INVALID_SESSION) //resume event failed
         {
-            if (msg.data == false) 
+            if (msg.data == false) //cannot resume
             {
                 discordSocket.close(CloseCodes.DISCONNECT)
                 console.log("Could not resume")
 
                 attemptReconnect(false)
             }
-            else
+            else //Discord indicates resume is possible, attempt
             {
                 discordSocket.close(CloseCodes.SESSION_TIMED_OUT)
                 attemptReconnect(true)
@@ -112,18 +95,13 @@ function main()
             return
         }
 
-        // if (msg.op == Opcodes.RESUMED)
-        // {
-        //     console.log("websocket resumed")
-        // }
-
-        if (msg.opcode == Opcodes.RECONNECT) //uh oh?
+        if (msg.opcode == Opcodes.RECONNECT) //discord instructs to resume
         {
             attemptReconnect(true)
             return
         }
 
-        if (msg.opcode == Opcodes.DISPATCH) {
+        if (msg.opcode == Opcodes.DISPATCH) { //Normal dispatch event
             process.env.LAST_SEQ = msg.eventID
             AddVariableToEnvFile("LAST_SEQ", process.env.LAST_SEQ)
 
@@ -150,7 +128,7 @@ function main()
         if (closed.code == 1000 || closed.code == 1001) {
             attemptReconnect(false)
         }
-        else if (closed.code <= 4009 || closed.code > 4014) { //4010 through 4014 are not codes that allow reconnection
+        else if (closed.code <= 4009 || closed.code > 4014) { //{4010, 4011, 4012, 4013, 4014} are not codes that allow reconnection
             attemptReconnect(true)
         }
     })
@@ -166,12 +144,10 @@ function main()
 
 function heartbeatStart(delay) {
     let jitter = (Math.random() * 0.5) + 0.5
-    //console.log(`jitter:${jitter}, timer: ${delay}; ${delay * jitter}`)
     heartbeatID = setInterval(heartbeatBeat, delay * jitter)
 }
 
 function heartbeatBeat() {
-    //console.log("heart has beaten")
     if (process.env.LAST_SEQ != null)
     {
         seqNum = parseInt(process.env.LAST_SEQ)
@@ -202,9 +178,9 @@ function acknowledgeHeartbeat() {
 
 /**
  * 
- * @param {Boolean} attemptResume If true, the code will attempt to resume instead of creating a new socket.
+ * @param {Boolean} attemptResume If true, the code will attempt to resume instead of creating a new socket, by default false
  */
-function attemptReconnect(attemptResume) {
+function attemptReconnect(attemptResume = false) {
     if (reconnects <= 0)
     {
         console.log("Tried to reconnect 3 times and failed. Stopping.")
@@ -281,4 +257,3 @@ function Quit()
         discordSocket.close(1000)
     }
 }
-    

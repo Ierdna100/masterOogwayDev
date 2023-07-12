@@ -111,21 +111,4 @@ const CloseCodes = {
     DISALOWED_INTENTS: 4014
 }
 
-const CloseCodesReconnectPossibility = {
-    UNKNOWN_ERROR: true,
-    UNKNOWN_OPCODE: true,
-    DECODE_ERROR: true,
-    NOT_AUTHENTICATED: true,
-    AUTHENTICATION_FAILED: false,
-    ALREADY_AUTHENTICATED: true,
-    INVALID_SEQUENCEL: true,
-    RATE_LIMITED: true,
-    SESSION_TIMED_OUT: true,
-    INVALID_SHARD: false,
-    SHARDING_REQUIRED: false,
-    INVALID_API_VERSION: false, 
-    INVALID_INTENTS: false,
-    DISALOWED_INTENTS: false
-}
-
-module.exports = { ReceivedGatewayEvent, SentGatewayEvent, Opcodes, CloseCodes, CloseCodesReconnectPossibility }
+module.exports = { ReceivedGatewayEvent, SentGatewayEvent, Opcodes, CloseCodes }
