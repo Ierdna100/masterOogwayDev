@@ -307,8 +307,6 @@ function GenerateChoicesForWhisperCommand() {
     let whitelistFilePath = process.env.WHITELIST_FILE_PATH
 }
 
-main()
-
 async function CreateCommand(commandIndex) {
     fetch(`https://discord.com/api/v10/applications/${process.env.APP_ID}/commands`, {
         method: "POST",
@@ -332,3 +330,5 @@ async function CreateCommand(commandIndex) {
             console.log(err)
         })
 }
+
+main()
