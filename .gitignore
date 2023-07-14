@@ -1,7 +1,7 @@
-/debugs/
+/debugs/*
 /node_modules
 .env
 TODO.txt
 envFileTemplate.txt
-/logs/
+/logs/*
 loggingManager.js

@@ -2,7 +2,7 @@ const fs = require('fs')
 
 function AddVariableToEnvFile(key, value) {
 
-    let file = fs.readFileSync("./.env").toString()
+    let file = fs.readFileSync("env").toString()
     let splitter
 
     if (process.platform == 'win32') //windows separates newlines differently
