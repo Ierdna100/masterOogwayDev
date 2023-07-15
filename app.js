@@ -9,6 +9,7 @@ const { HandleDispatchEvent } = require('./gateway/commandsHandler')
 const express = require('express')
 const fs = require('fs')
 const { HTTPMethods } = require('./http/httpMethods')
+const exp = require('constants')
 require('dotenv').config()
 
 let discordSocketURL
@@ -22,7 +23,33 @@ const socketModes = {
 async function init() {
     await checkIfURLIdentExists()
 
-    if ((process.env.RESUME_GATEWAY_URL && !(process.argv[2] == "force-ident")) || process.argv[2] == "force-resume")
+    /**@type {boolean} */
+    let forceIdent = false
+    /**@type {boolean} */
+    let forceResume = false
+    /**@type {boolean} */
+    let fetchCommands = false
+    /**@type {boolean} */
+    let resumeURLExists = !(process.env.RESUME_GATEWAY_URL == "")
+
+    process.argv.forEach((element, index) => {
+        if (element == "force-ident") 
+        {
+            forceResume = false
+            forceIdent = true
+        } 
+        else if (element == "force-resume")
+        {
+            forceResume = true
+            forceIdent = false
+        }
+        else if (element == "fetch-commands")
+        {
+            fetchCommands = true
+        }
+    })
+
+    if ((resumeURLExists && !forceIdent) || forceResume)
     {
         discordSocketURL = process.env.RESUME_GATEWAY_URL
         socketModeTemp = socketModes.RESUMED
@@ -30,14 +57,16 @@ async function init() {
     }
     else
     {
-        discordSocketURL = `${process.env.SOCKET_URL}?v=10&encoding=json`
+        discordSocketURL = `${process.env.SOCKET_URL}`
         socketModeTemp = socketModes.IDENTIFIED
         console.log("Initializing websocket as an IDENTIFIED socket")
     }
 
-    //let writeData = await DiscordRequest(`/applications/${process.env.APP_ID}/commands`, { method: HTTPMethods.GET})
-
-    //fs.writeFileSync('./logs/appCommands.json', JSON.stringify(writeData, null, '\t'))
+    if (fetchCommands)
+    {
+        let writeData = await DiscordRequest(`/applications/${process.env.APP_ID}/commands`, { method: HTTPMethods.GET})
+        fs.writeFileSync('./logs/appCommands.json', JSON.stringify(writeData, null, '\t'))
+    }
     
     main()
 }
@@ -49,27 +78,36 @@ let heartbeatID
 let heartbeatAckID
 let reconnects = 3
 let readyEventData
+let discordGatewayReady = false
 
 let socketMode
 /**@type {WebSocket} */
 let discordSocket
 /**@type {Express} */
-let expressServer
+let expressServerSetup
 /**@type {Express} */
-let internalExpressServer
+let activeExpressServer
 
 function main()
 {
     socketMode = socketModeTemp
-    expressServer = express()
+    expressServerSetup = express()
+    expressServerSetup.use(express.json())
 
     createWebSocket()
 
-    expressServer.get('/', (req, res) => {
-        console.log(JSON.parse(req))
+    expressServerSetup.get('/isReady/', (req, res) => {
+        if (discordGatewayReady)
+        {
+            res.send("OK")
+        }
+        else 
+        {
+            res.send("FAIL")
+        }
     })
     
-    internalExpressServer = expressServer.listen(process.env.INTERNAL_SERVER_PORT, () => {
+    activeExpressServer = expressServerSetup.listen(process.env.INTERNAL_SERVER_PORT, () => {
         console.log(`Internal server listening on ${process.env.INTERNAL_SERVER_PORT}`)
     })
 }
@@ -109,6 +147,8 @@ function createWebSocket()
         //resume event failed
         if (msg.opcode == Opcodes.INVALID_SESSION) 
         {
+            discordSocketNoLongerRead()
+
             if (msg.data == false) //cannot resume
             {
                 discordSocket.close(CloseCodes.DISCONNECT)
@@ -125,6 +165,8 @@ function createWebSocket()
         //discord instructs to resume
         if (msg.opcode == Opcodes.RECONNECT) 
         {
+            discordSocketNoLongerRead()
+
             discordSocket.close(CloseCodes.SESSION_TIMED_OUT)
             return
         }
@@ -141,6 +183,8 @@ function createWebSocket()
                 AddVariableToEnvFile("SESSION_ID", process.env.SESSION_ID)
                 AddVariableToEnvFile("RESUME_GATEWAY_URL", readyEventData.resume_gateway_url)
                 console.log("Received ready event, websocket is established")
+
+                discordGatewayReady = true
             }
             else 
             {
@@ -218,13 +262,19 @@ function attemptReconnect(attemptResume = false) {
 
     if (attemptResume)
     {
-        resume()
+        checkIfURLIdentExists()
+
+        discordSocketURL = `${process.env.RESUME_GATEWAY_URL}`
+        socketMode = socketModes.RESUMED
+        console.log("Initialiazing websocket as a RESUMED socket")
+
+        createWebSocket()
     }
     else
     {
         checkIfURLIdentExists()
 
-        discordSocketURL = `${process.env.SOCKET_URL}?v=10&encoding=json`
+        discordSocketURL = `${process.env.SOCKET_URL}`
         socketMode = socketModes.IDENTIFIED
         console.log("Initializing websocket as an IDENTIFIED socket")
 
@@ -246,8 +296,8 @@ function startIdent() {
         intents: new Intents().guild_messages().direct_messages().p_message_content().parse(), //37376 (MESSAGE_CONTENT is required for some things)
         properties: {
             os: process.platform,
-            browser: "noneofthem",
-            device: "7700hqserver"
+            browser: process.env.BROWSER_NAME,
+            device: process.env.DEVICE_NAME
         },
         presence: {
             since: null,
@@ -264,9 +314,13 @@ function startIdent() {
     discordSocket.send(identEvent)
 }
 
+function discordSocketNoLongerRead(){
+    discordGatewayReady = false
+}
+
 function Quit() 
 {
-    internalExpressServer.close()
+    activeExpressServer.close()
     discordSocket.close(1000)
     process.exit()
 }

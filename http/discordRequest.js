@@ -46,7 +46,7 @@ async function DiscordRequest(endpoint, options)
     await fetch(fullURL, request)
     .then(async res => {
         //console.log(`${res.status} - ${res.statusText}`)
-        if (options.method == HTTPMethods.GET)
+        if (options.method == HTTPMethods.GET || options.method == HTTPMethods.PUT)
         {
             returnValue = res.json()
         }

@@ -10,7 +10,7 @@ const COMMANDS = []
 COMMANDS.push({ //0
     "name": "server-info",
     "type": enums.ApplicationCommandType.CHAT_INPUT,
-    "description": "Get information about the Minecraft server",
+    "description": "Get information about the Minecraft server"
 })
 
 COMMANDS.push({ //1
@@ -38,13 +38,15 @@ COMMANDS.push({ //3
             "min_value": 15,
             "max_value": 600
         }
-    ]
+    ],
+    "default_member_permissions": "8"
 })
 
 COMMANDS.push({ //4
     "name": "jfr-stop",
     "type": enums.ApplicationCommandType.CHAT_INPUT,
-    "description": "Stops a JFR session if one is active"
+    "description": "Stops a JFR session if one is active",
+    "default_member_permissions": "8"
 })
 
 COMMANDS.push({ //5
@@ -56,7 +58,8 @@ COMMANDS.push({ //5
 COMMANDS.push({ //6
     "name": "server-time",
     "type": enums.ApplicationCommandType.CHAT_INPUT,
-    "description": "Shows the server control timers"
+    "description": "Shows the server control timers",
+    "default_member_permissions": "8"
 })
 
 COMMANDS.push({ //7
@@ -115,7 +118,8 @@ COMMANDS.push({ //9
             "max_length": 256,
             "required": true,
         }
-    ]
+    ],
+    "default_member_permissions": "8"
 })
 
 COMMANDS.push({ //10
@@ -180,7 +184,8 @@ COMMANDS.push({ //10
             "name": "list",
             "description": "Lists whitelisted players"
         }
-    ]
+    ],
+    "default_member_permissions": "8"
 })
 
 COMMANDS.push({ //11
@@ -201,7 +206,8 @@ COMMANDS.push({ //11
             "description": "Ending date for the logs, format as YYYY-MM-DD",
             "max_length": 10
         }
-    ]
+    ],
+    "default_member_permissions": "8"
 })
 
 COMMANDS.push({ //12
@@ -214,25 +220,29 @@ COMMANDS.push({ //12
             "name": "backup",
             "description": "Backup while restarting?"
         }
-    ]
+    ],
+    "default_member_permissions": "8"
 })
 
 COMMANDS.push({ //13
     "name": "stop",
     "type": enums.ApplicationCommandType.CHAT_INPUT,
-    "description": "Stops server"
+    "description": "Stops server",
+    "default_member_permissions": "8"
 })
 
 COMMANDS.push({ //14
     "name": "screenshot",
     "type": enums.ApplicationCommandType.CHAT_INPUT,
-    "description": "Screenshots server environnement and sends result in"
+    "description": "Screenshots server environnement and sends result in",
+    "default_member_permissions": "8"
 })
 
 COMMANDS.push({ //15
     "name": "debug",
     "type": enums.ApplicationCommandType.CHAT_INPUT,
-    "description": "Sends useful information about the servers running"
+    "description": "Sends useful information about the servers running",
+    "default_member_permissions": "8"
 })
 
 const main = async () => {
@@ -276,6 +286,14 @@ const main = async () => {
         {
             console.log(`Found no command with the name ${process.argv[3]}.`)
         }
+    }
+    else if (process.argv[2] == "update-all") 
+    {
+        result = await DiscordRequest(`/applications/${process.env.APP_ID}/commands`, {
+            method: "PUT",
+            body: COMMANDS
+        })
+        fs.writeFileSync("./logs/commandsOutput.json", JSON.stringify(result, null, "\t"))
     }
     else 
     {

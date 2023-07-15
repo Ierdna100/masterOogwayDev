@@ -1,6 +1,8 @@
 const fs = require('fs')
 const { GetGatewayURL } = require('../http/discordRequest.js')
 
+AddVariableToEnvFile("SOCKET_URL", "wss://gateway.discord.gg?v=10&encoding=json")
+
 function AddVariableToEnvFile(key, value) {
     let file = fs.readFileSync("./.env").toString()
     let splitter
@@ -16,9 +18,21 @@ function AddVariableToEnvFile(key, value) {
 
     file = file.split(splitter)
   
+    //this is written like this and not a .split("=") because some URLs have equals in them for the query string.
+    let outputArray = []
+
     file.forEach((element, index) => {
-        file[index] = element.split("=")
+        equalsIndex = element.indexOf("=")
+
+        before = element.slice(0, equalsIndex)
+        after = element.slice(equalsIndex + 1, element.length)
+
+        outputArray.push([ before, after ])
     });
+
+    file = outputArray
+
+    //console.log(file)
 
     let keyAlreadyExistsAtIndex = -1
 
@@ -39,6 +53,8 @@ function AddVariableToEnvFile(key, value) {
         //console.log(`Variable didn't already exist, assigning ${[key, value]} to it`)
     }
 
+    //console.log(file)
+
     let writeData = ""
 
     file.forEach(element => {
@@ -46,6 +62,8 @@ function AddVariableToEnvFile(key, value) {
     })
 
     writeData = writeData.substring(0, writeData.length - splitter.length) //remvoes the extra \r\n
+
+    //console.log(writeData)
 
     fs.writeFileSync("./.env", writeData)
 }
