@@ -1,8 +1,8 @@
 const fetch = require('node-fetch')
-const enums = require('./ApplicationCommand.js')
+const enums = require('./enums/ApplicationCommand.js')
 const fs = require('fs')
 const process = require('process')
-const { DiscordRequest } = require('./discordRequest.js')
+const { DiscordRequest } = require('./http/discordRequest.js')
 require('dotenv').config()
 
 const COMMANDS = []

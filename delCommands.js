@@ -1,7 +1,7 @@
 const fetch = require('node-fetch')
 require('dotenv').config()
 const process = require('process')
-const { DiscordRequest, HTTPMethods } = require('./discordRequest.js')
+const { DiscordRequest, HTTPMethods } = require('./http/discordRequest.js')
 
 const commandID = process.argv[2] //KEEP AS STRING due to Integer limit
 

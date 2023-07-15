@@ -1,8 +1,8 @@
 const fs = require('fs')
+const { GetGatewayURL } = require('../http/discordRequest.js')
 
 function AddVariableToEnvFile(key, value) {
-
-    let file = fs.readFileSync("env").toString()
+    let file = fs.readFileSync("./.env").toString()
     let splitter
 
     if (process.platform == 'win32') //windows separates newlines differently
@@ -45,9 +45,20 @@ function AddVariableToEnvFile(key, value) {
         writeData = writeData + `${element[0]}=${element[1]}${splitter}`
     })
 
-    writeData = writeData.substring(0, writeData.length - 2) //remvoes the extra \r\n
+    writeData = writeData.substring(0, writeData.length - splitter.length) //remvoes the extra \r\n
 
     fs.writeFileSync("./.env", writeData)
 }
 
-module.exports = { AddVariableToEnvFile }
+async function checkIfURLIdentExists()
+{
+    if (!process.env.SOCKET_URL) 
+    {
+        let newURL = await GetGatewayURL()
+        console.log(`RECEIVED GATEWAY URL: ${newURL}`)
+        process.env.SOCKET_URL = newURL //temporary, for this session only
+        AddVariableToEnvFile("SOCKET_URL", newURL) // applies next session after dotenv is reconfigured
+    }
+}
+
+module.exports = { AddVariableToEnvFile, checkIfURLIdentExists }

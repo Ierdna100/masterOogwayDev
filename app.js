@@ -1,11 +1,14 @@
-const { DiscordRequest, GetGatewayURL } = require('./discordRequest')
-const { AddVariableToEnvFile } = require('./envManager')
+const { DiscordRequest, GetGatewayURL } = require('./http/discordRequest')
+const { AddVariableToEnvFile, checkIfURLIdentExists } = require('./env/envManager')
 const WebSocket = require('ws')
-const { ReceivedGatewayEvent, SentGatewayEvent, Opcodes, CloseCodes } = require('./gatewayEvents')
-const { ActivityTypes } = require('./activities')
-const { Status } = require('./status')
-const { Intents } = require('./intentsCalculator')
+const { ReceivedGatewayEvent, SentGatewayEvent, Opcodes, CloseCodes } = require('./gateway/gatewayEvents')
+const { ActivityTypes } = require('./enums/activities')
+const { Status } = require('./enums/status')
+const { Intents } = require('./gateway/intentsCalculator')
+const { HandleDispatchEvent } = require('./gateway/commandsHandler')
 const express = require('express')
+const fs = require('fs')
+const { HTTPMethods } = require('./http/httpMethods')
 require('dotenv').config()
 
 let discordSocketURL
@@ -31,6 +34,10 @@ async function init() {
         socketModeTemp = socketModes.IDENTIFIED
         console.log("Initializing websocket as an IDENTIFIED socket")
     }
+
+    //let writeData = await DiscordRequest(`/applications/${process.env.APP_ID}/commands`, { method: HTTPMethods.GET})
+
+    //fs.writeFileSync('./logs/appCommands.json', JSON.stringify(writeData, null, '\t'))
     
     main()
 }
@@ -39,24 +46,45 @@ init()
 
 let heartAck
 let heartbeatID
+let heartbeatAckID
 let reconnects = 3
 let readyEventData
 
 let socketMode
+/**@type {WebSocket} */
 let discordSocket
+/**@type {Express} */
 let expressServer
+/**@type {Express} */
 let internalExpressServer
 
 function main()
 {
     socketMode = socketModeTemp
-    discordSocket = new WebSocket(discordSocketURL)
     expressServer = express()
 
+    createWebSocket()
+
+    expressServer.get('/', (req, res) => {
+        console.log(JSON.parse(req))
+    })
+    
+    internalExpressServer = expressServer.listen(process.env.INTERNAL_SERVER_PORT, () => {
+        console.log(`Internal server listening on ${process.env.INTERNAL_SERVER_PORT}`)
+    })
+}
+
+function createWebSocket()
+{
+    discordSocket = new WebSocket(discordSocketURL)
+
     discordSocket.addEventListener("message", (event) => {
+        /**@type {ReceivedGatewayEvent} */
+        let msg
         msg = new ReceivedGatewayEvent(event)
 
-        if (msg.opcode == Opcodes.HELLO) //Websocket open, discord sends Hello
+        //Websocket open, discord sends Hello
+        if (msg.opcode == Opcodes.HELLO)
         {
             heartbeatBeat() //my code sucks so I'll just call it once here
             heartbeatStart(msg.data.heartbeat_interval)
@@ -71,37 +99,38 @@ function main()
             return
         }
 
-        if (msg.opcode == Opcodes.ACK) //discord acknowledges heartbeat
+         //discord acknowledges heartbeat
+        if (msg.opcode == Opcodes.ACK)
         {
             heartAck = true
             return
         }
 
-        if (msg.opcode == Opcodes.INVALID_SESSION) //resume event failed
+        //resume event failed
+        if (msg.opcode == Opcodes.INVALID_SESSION) 
         {
             if (msg.data == false) //cannot resume
             {
                 discordSocket.close(CloseCodes.DISCONNECT)
                 console.log("Could not resume")
-
-                attemptReconnect(false)
             }
             else //Discord indicates resume is possible, attempt
             {
                 discordSocket.close(CloseCodes.SESSION_TIMED_OUT)
-                attemptReconnect(true)
             }
 
             return
         }
 
-        if (msg.opcode == Opcodes.RECONNECT) //discord instructs to resume
+        //discord instructs to resume
+        if (msg.opcode == Opcodes.RECONNECT) 
         {
-            attemptReconnect(true)
+            discordSocket.close(CloseCodes.SESSION_TIMED_OUT)
             return
         }
 
-        if (msg.opcode == Opcodes.DISPATCH) { //Normal dispatch event
+        //Normal dispatch event
+        if (msg.opcode == Opcodes.DISPATCH) {
             process.env.LAST_SEQ = msg.eventID
             AddVariableToEnvFile("LAST_SEQ", process.env.LAST_SEQ)
 
@@ -115,30 +144,25 @@ function main()
             }
             else 
             {
-                //Handle Dispatch
+                HandleDispatchEvent(msg)
             }
             return
         }
     })
 
+    //Listen for close events
     discordSocket.addEventListener("close", (closed) => {
-        console.log(`OTHER PARTY CLOSED WITH CODE: ${closed.code} ${closed.reason}`)
+        //console.log(closed)
+        console.log(`CLOSED SOCKET WITH CODE: ${closed.code} ${closed.reason}`)
         clearInterval(heartbeatID)
+        clearTimeout(heartbeatAckID)
 
         if (closed.code == 1000 || closed.code == 1001) {
             attemptReconnect(false)
         }
-        else if (closed.code <= 4009 || closed.code > 4014) { //{4010, 4011, 4012, 4013, 4014} are not codes that allow reconnection
+        else if (closed.code <= 4009 || closed.code > 4014) { //{4010, 4011, 4012, 4013, 4014} are not codes that allow reconnection (+ 1 I forgor)
             attemptReconnect(true)
         }
-    })
-
-    expressServer.get('/', (req, res) => {
-        console.log(JSON.parse(req))
-    })
-    
-    internalExpressServer = expressServer.listen(process.env.INTERNAL_SERVER_PORT, () => {
-        console.log(`Internal server listening on ${process.env.INTERNAL_SERVER_PORT}`)
     })
 }
 
@@ -160,14 +184,17 @@ function heartbeatBeat() {
     let heartbeat = new SentGatewayEvent(Opcodes.HEARTRBEAT, seqNum).toJson()
     discordSocket.send(heartbeat)
 
-    setTimeout(acknowledgeHeartbeat, 5000) //confirm heartbeat within 5000 ms
+    heartbeatAckID = setTimeout(acknowledgeHeartbeat, 5000) //confirm heartbeat within 5000 ms
 }
 
-function acknowledgeHeartbeat() {
+function acknowledgeHeartbeat() 
+{
+    //console.log(`HEARTBEAT ACK?: ${heartAck}`)
+
     if (!heartAck) {
         clearInterval(heartbeatID)
+        clearTimeout(heartbeatAckID)
         discordSocket.close(4009)
-        attemptReconnect(true)
     }
     else
     {
@@ -201,7 +228,7 @@ function attemptReconnect(attemptResume = false) {
         socketMode = socketModes.IDENTIFIED
         console.log("Initializing websocket as an IDENTIFIED socket")
 
-        discordSocket = new WebSocket(discordSocketURL)
+        createWebSocket()
     }
 }
 
@@ -216,12 +243,11 @@ function startIdent() {
 
     data = {
         token: process.env.DISCORD_TOKEN,
-//        intents: 55840, //0 1101 1010 0010 0000, WEBHOOKS, MESSAGES, TYPING, DM, DM_TYPING, MESSAGE_CONTENT (activate the sensitive thing)
-        intents: new Intents(false, false, false, false, false, true, false, false, false, true, false, true, true, false, true, false, false).toInt(),
+        intents: new Intents().guild_messages().direct_messages().p_message_content().parse(), //37376 (MESSAGE_CONTENT is required for some things)
         properties: {
             os: process.platform,
             browser: "noneofthem",
-            device: "3700xcpu"
+            device: "7700hqserver"
         },
         presence: {
             since: null,
@@ -238,22 +264,9 @@ function startIdent() {
     discordSocket.send(identEvent)
 }
 
-async function checkIfURLIdentExists()
-{
-    if (!process.env.SOCKET_URL) 
-    {
-        let newURL = await GetGatewayURL()
-        process.env.SOCKET_URL = newURL //temporary, for this session only
-        AddVariableToEnvFile("SOCKET_URL", newURL) // applies next session after dotenv is reconfigured
-    }
-}
-
 function Quit() 
 {
     internalExpressServer.close()
-
-    if (discordSocket)
-    {
-        discordSocket.close(1000)
-    }
+    discordSocket.close(1000)
+    process.exit()
 }
